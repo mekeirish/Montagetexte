@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dactylo Pro Final</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Almarai:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #121212; color: #d4d4d4; font-family: 'Courier Prime', monospace; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        #bg-element { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+        #interface { padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; z-index: 1; }
+        textarea { width: 100%; height: 40vh; background: #1e1e1e; color: #fff; border: 1px solid #333; padding: 15px; border-radius: 10px; font-family: inherit; resize: none; box-sizing: border-box; }
+        .speed-control { margin-top: 20px; color: #888; font-size: 14px; }
+        input[type=range] { width: 100%; margin-top: 15px; accent-color: #007bff; }
+        select { width: 100%; padding: 10px; margin-top: 10px; background: #1e1e1e; color: #fff; border: 1px solid #333; border-radius: 5px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { margin-top: 20px; padding: 20px; background: #007bff; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; flex: 1; }
+        #bgBtn, #sigBtn, #fontBtn { background: #444; }
+        #display-container { display: none; position: absolute; top: 50vh; left: 0; width: 100%; height: 25vh; z-index: 2; overflow: hidden; }
+        #text-content { 
+            position: relative; width: 80%; margin: 25vh auto 0 auto; white-space: pre-wrap; word-wrap: break-word; font-size: 18px; line-height: 1.6; 
+            color: #ffffff; 
+            text-shadow: 2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000;
+            text-align: justify; text-align-last: center;
+            padding: 20px; box-sizing: border-box;
+        }
+        footer { text-align: center; font-size: 9px; color: #666; position: absolute; bottom: 0; width: 100%; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 20px; padding-top: 50px; background: linear-gradient(to top, #121212 0%, transparent 100%); }
+        footer img { width: 60px; height: auto; opacity: 0.9; }
+    </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4b6cb7">
+<link rel="apple-touch-icon" href="icon.png"></head>
+<body>
+
+    <div id="bg-element"></div>
+
+    <div id="interface">
+        <textarea id="inputText" placeholder="Entrez votre texte..." oninput="saveOptions()"></textarea>
+        <div class="speed-control">
+            Vitesse de défilement :
+            <input type="range" id="speedRange" min="1" max="10" step="1" value="5" oninput="saveOptions()">
+            Taille du texte :
+            <select id="fontSize" onchange="applyStyles(); saveOptions()">
+                <option value="14px">Petit</option>
+                <option value="18px" selected>Moyen</option>
+                <option value="24px">Grand</option>
+                <option value="32px">Très grand</option>
+            </select>
+        </div>
+        <div class="btn-group">
+            <button id="bgBtn" onclick="document.getElementById('imageInput').click()">BG MÉDIA</button>
+            <input type="file" id="imageInput" accept="image/*,video/*" style="display:none" onchange="handleBg(event)">
+            
+            <button id="fontBtn" onclick="document.getElementById('fontInput').click()">FONT</button>
+            <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" style="display:none" onchange="handleFont(event)">
+            
+            <button id="sigBtn" onclick="collerSignature()">SIGNATURE</button>
+            <button onclick="lancerAnimation()">LANCER</button>
+        </div>
+    </div>
+
+    <div id="display-container" onclick="location.reload()" oncontextmenu="location.reload(); return false;">
+        <div id="text-content"></div>
+    </div>
+
+    <footer id="signature-footer">
+        <div id="sig-container">
+            <a href="https://ibb.co/svJG1ZQk"><img src="https://i.ibb.co/VWpZCsDr/dfg-1.png" alt="dfg-1" border="0"></a>
+        </div>
+        Made by Laiche Brahim 2026 Paris
+    </footer>
+
+    <script>
+        let bgMedia = null;
+
+        window.onload = () => {
+            // Restaurer texte, vitesse, taille
+            document.getElementById('inputText').value = localStorage.getItem('dactyloText') || "";
+            document.getElementById('speedRange').value = localStorage.getItem('dactyloSpeed') || 5;
+            document.getElementById('fontSize').value = localStorage.getItem('dactyloSize') || "18px";
+            if (localStorage.getItem('dactyloSig')) document.getElementById('sig-container').innerHTML = localStorage.getItem('dactyloSig');
+            
+            // Restaurer Background
+            const savedBg = localStorage.getItem('dactyloBg');
+            if (savedBg) applyBg(savedBg, localStorage.getItem('dactyloBgType'));
+            
+            // Restaurer Font
+            const savedFont = localStorage.getItem('dactyloFont');
+            if (savedFont) applyFont(savedFont);
+            
+            applyStyles();
+        };
+
+        function saveOptions() {
+            localStorage.setItem('dactyloText', document.getElementById('inputText').value);
+            localStorage.setItem('dactyloSpeed', document.getElementById('speedRange').value);
+            localStorage.setItem('dactyloSize', document.getElementById('fontSize').value);
+        }
+
+        function applyStyles() {
+            document.getElementById('text-content').style.fontSize = document.getElementById('fontSize').value;
+        }
+
+        function handleBg(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                applyBg(reader.result, file.type);
+                localStorage.setItem('dactyloBg', reader.result);
+                localStorage.setItem('dactyloBgType', file.type);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyBg(data, type) {
+            const container = document.getElementById('bg-element');
+            container.innerHTML = '';
+            if (type.startsWith('video/')) {
+                const vid = document.createElement('video');
+                vid.src = data; vid.loop = true; vid.muted = true; vid.autoplay = true;
+                vid.style.cssText = "width:100%; height:100%; object-fit:cover;";
+                container.appendChild(vid);
+                bgMedia = vid;
+            } else {
+                document.body.style.backgroundImage = `url(${data})`;
+                bgMedia = null;
+            }
+        }
+
+        function handleFont(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                applyFont(reader.result);
+                localStorage.setItem('dactyloFont', reader.result);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function applyFont(data) {
+            const fontFace = new FontFace('CustomFont', data);
+            fontFace.load().then(f => {
+                document.fonts.add(f);
+                document.getElementById('text-content').style.fontFamily = 'CustomFont';
+            });
+        }
+
+        async function collerSignature() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text.includes('<img') || text.includes('<a')) {
+                    document.getElementById('sig-container').innerHTML = text;
+                    localStorage.setItem('dactyloSig', text);
+                }
+            } catch (err) { alert("Accès refusé."); }
+        }
+
+        function lancerAnimation() {
+            const texte = document.getElementById('inputText').value;
+            if (!texte) return;
+            document.getElementById('text-content').textContent = texte;
+            if (bgMedia) bgMedia.play();
+            document.getElementById('interface').style.display = 'none';
+            document.getElementById('display-container').style.display = 'block';
+            let pos = 25;
+            const speed = parseInt(document.getElementById('speedRange').value) * 0.025;
+            function animate() {
+                pos -= speed;
+                document.getElementById('text-content').style.marginTop = pos + "vh";
+                if (pos > - (document.getElementById('text-content').offsetHeight / window.innerHeight * 100)) requestAnimationFrame(animate);
+                else location.reload();
+            }
+            animate();
+        }
+    </script>
+
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}</script>
+</body>
+</html>
